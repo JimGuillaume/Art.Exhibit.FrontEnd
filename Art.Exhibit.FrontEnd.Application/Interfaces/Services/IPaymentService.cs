@@ -1,5 +1,7 @@
 ﻿using Art.Exhibit.FrontEnd.Application.DTOs;
 
+namespace Art.Exhibit.FrontEnd.Application.Interfaces.Services;
+
 public interface IPaymentService
 {
     Task<PaymentDTO?> GetByIdAsync(int id);
