@@ -1,4 +1,4 @@
-namespace ArtExhibit.BackEnd.Application.DTOs;
+namespace Art.Exhibit.FrontEnd.Application.DTOs;
 
 public class ShipmentDTO
 {

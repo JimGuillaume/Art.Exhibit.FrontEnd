@@ -1,4 +1,4 @@
-﻿using ArtExhibit.BackEnd.Application.DTOs;
+﻿using Art.Exhibit.FrontEnd.Application.DTOs;
 
 public interface ICategoryService
 {

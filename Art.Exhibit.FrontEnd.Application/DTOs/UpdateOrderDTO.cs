@@ -1,6 +1,4 @@
-﻿using ArtExhibit.BackEnd.Domain.Entities;
-
-namespace ArtExhibit.BackEnd.Application.DTOs;
+﻿namespace Art.Exhibit.FrontEnd.Application.DTOs;
 
 public class UpdateOrderDTO
 {
