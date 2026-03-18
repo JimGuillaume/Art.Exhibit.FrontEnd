@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="Art.Exhibit.FrontEnd.Application/Art.Exhibit.FrontEnd.Application.csproj" />
+  <Project Path="Art.Exhibit.FrontEnd.Infrastructure/Art.Exhibit.FrontEnd.Infrastructure.csproj" />
+  <Project Path="Art.Exhibit.FrontEnd.UI/Art.Exhibit.FrontEnd.UI.csproj" />
+</Solution>
