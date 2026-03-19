@@ -1,9 +1,10 @@
 ﻿using Art.Exhibit.FrontEnd.Application.DTOs;
 
-namespace Art.Exhibit.FrontEnd.Application.Interfaces.Services;
-
 public interface IItemReviewService
 {
-    Task<IEnumerable<ItemReviewDTO>> GetByItemIdAsync(int itemId);
+    Task<IEnumerable<ItemReviewDTO>> GetAllAsync();
+    Task<ItemReviewDTO?> GetByIdAsync(int id);
     Task CreateAsync(CreateItemReviewDTO dto);
+    Task UpdateAsync(UpdateItemReviewDTO dto);
+    Task DeleteAsync(int id);
 }

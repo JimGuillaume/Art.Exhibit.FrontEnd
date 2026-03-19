@@ -1,10 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using Art.Exhibit.FrontEnd.Application.DTOs;
+using Art.Exhibit.FrontEnd.Application.Interfaces.HttpClients;
+using Art.Exhibit.FrontEnd.Application.Interfaces.Services;
 
-namespace Art.Exhibit.FrontEnd.Application.Services
+namespace Art.Exhibit.FrontEnd.Application.Services;
+
+public class CategoryService : ICategoryService
 {
-    internal class CategoryService
-    {
-    }
+    private readonly IArtExhibitApiClient _apiClient;
+    public CategoryService(IArtExhibitApiClient apiClient) => _apiClient = apiClient;
+
+    public async Task<IEnumerable<CategoryDTO>> GetAllAsync()
+        => await _apiClient.GetAsync<IEnumerable<CategoryDTO>>("category") ?? [];
+
+    public async Task<CategoryDTO?> GetByIdAsync(int id)
+        => await _apiClient.GetAsync<CategoryDTO>($"category/{id}");
+
+    public async Task DeleteAsync(int id)
+        => await _apiClient.DeleteAsync($"category/{id}");
 }

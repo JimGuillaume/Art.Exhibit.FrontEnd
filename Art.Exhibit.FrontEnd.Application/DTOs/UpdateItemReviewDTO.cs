@@ -1,0 +1,9 @@
+﻿namespace Art.Exhibit.FrontEnd.Application.DTOs;
+
+public class UpdateItemReviewDTO
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public int ItemId { get; set; }
+    public string Review { get; set; } = string.Empty;
+}

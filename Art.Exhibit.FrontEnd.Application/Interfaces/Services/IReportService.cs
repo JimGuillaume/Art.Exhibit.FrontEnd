@@ -1,8 +1,10 @@
 ﻿using Art.Exhibit.FrontEnd.Application.DTOs;
 
-namespace Art.Exhibit.FrontEnd.Application.Interfaces.Services;
-
 public interface IReportService
 {
-    Task<ReportDTO?> GetAsync();
+    Task<IEnumerable<ReportDTO>> GetAllAsync();
+    Task<ReportDTO?> GetByIdAsync(int id);
+    Task CreateAsync(CreateReportDTO dto);
+    Task UpdateAsync(UpdateReportDTO dto);
+    Task DeleteAsync(int id);
 }

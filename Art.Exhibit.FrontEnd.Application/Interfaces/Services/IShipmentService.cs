@@ -1,8 +1,10 @@
 ﻿using Art.Exhibit.FrontEnd.Application.DTOs;
 
-namespace Art.Exhibit.FrontEnd.Application.Interfaces.Services;
-
 public interface IShipmentService
 {
-    Task<ShipmentDTO?> GetByOrderIdAsync(int orderId);
+    Task<IEnumerable<ShipmentDTO>> GetAllAsync();
+    Task<ShipmentDTO?> GetByIdAsync(int id);
+    Task CreateAsync(CreateShipmentDTO dto);
+    Task UpdateAsync(UpdateShipmentDTO dto);
+    Task DeleteAsync(int id);
 }
