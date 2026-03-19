@@ -1,7 +1,174 @@
 ﻿@page "/"
-@using Art.Exhibit.FrontEnd.Application.DTOs;
-@using Art.Exhibit.FrontEnd.Application.Services;
-@inject IUserService UserService;
+@using System.Globalization
+@using Art.Exhibit.FrontEnd.Application.DTOs
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject ISaleService SaleService
 
+<PageTitle>Accueil — Art Exhibit</PageTitle>
 
-<PageTitle>Art Exhibit</PageTitle>
+<div class="page-shell">
+
+    <!--Body-->
+    <main class="page-content">
+        <div class="container">
+
+            <!-- Hero -->
+            <div class="hero">
+                <p class="hero-eyebrow">Maison de ventes aux enchères d'œuvres d'art</p>
+                <h1 class="hero-title">Découvre  &amp; collectionne<br /><em>Des oeuvres extraordinaires</em></h1>
+                <p class="hero-desc">
+                    Des ventes aux enchères sélectionnées avec soin, mettant à l'honneur des artistes émergents et confirmés.
+                    Enchérissez en direct et remportez des oeuvres originales livrées chez vous.
+                </p>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="filter-bar">
+                <div class="filter-pills">
+                    <FluentButton Appearance="@GetPillAppearance("All")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("All"))">Tous</FluentButton>
+                    <FluentButton Appearance="@GetPillAppearance("Active")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Active"))">En vente</FluentButton>
+                    <FluentButton Appearance="@GetPillAppearance("Pending")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Pending"))">A venir</FluentButton>
+                    <FluentButton Appearance="@GetPillAppearance("Completed")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Completed"))">Complétées</FluentButton>
+                </div>
+            </div>
+
+            @if (IsLoading)
+            {
+                <p>Chargement des œuvres...</p>
+            }
+            else if (!string.IsNullOrWhiteSpace(LoadError))
+            {
+                <p>@LoadError</p>
+            }
+            else
+            {
+                <!-- Gallery Grid -->
+                <div class="gallery-grid">
+                    @foreach (var (item, i) in FilteredArtworks.Select((x, i) => (x, i)))
+                    {
+                        <a class="art-card fade-up"
+                           href="/auction-detail"
+                           style="animation-delay:@(i * 0.06)s; @(item.Status == "Completed" ? "opacity:0.7;" : "")">
+                            <div class="art-card-img">
+                                <div class="img-placeholder">@item.Emoji</div>
+                                <div class="card-badge-wrap">
+                                    <span class="badge @GetBadgeClass(item.Status)">@item.Status</span>
+                                </div>
+                            </div>
+                            <div class="art-card-body">
+                                <div class="art-card-title">@item.Title</div>
+                                <div class="art-card-meta">@item.Meta</div>
+                                <div class="art-card-footer">
+                                    <div>
+                                        <div class="bid-label">@item.PriceLabel</div>
+                                        <div class="bid-amount">@item.Price</div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div class="bid-label">@item.RightLabel</div>
+                                        <div class="@item.RightValueClass">@item.RightValue</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+    </main>
+</div>
+
+@code {
+    private string ActiveFilter = "All";
+    private string SearchTerm = string.Empty;
+    private bool IsLoading = true;
+    private string? LoadError;
+
+    private record ArtworkItem(
+        string Title, string Meta, string Emoji, string Status,
+        string PriceLabel, string Price,
+        string RightLabel, string RightValue, string RightValueClass
+    );
+
+    private List<ArtworkItem> Artworks = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var sales = (await SaleService.GetAllAsync()).ToList();
+            Artworks = sales.Select(MapToArtworkItem).ToList();
+        }
+        catch (Exception)
+        {
+            LoadError = "Impossible de charger les ventes depuis le backend.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static ArtworkItem MapToArtworkItem(SaleDTO sale)
+    {
+        var status = NormalizeSaleStatus(sale.Status);
+        var isCompleted = status == "Completed";
+        var isPending = status == "Pending";
+
+        var displayedPrice = isCompleted && sale.FinalPrice > 0
+            ? sale.FinalPrice
+            : sale.StartingPrice;
+
+        var priceLabel = isCompleted ? "Sold For" : isPending ? "Starting Bid" : "Current Bid";
+
+        var rightLabel = isPending ? "Starts" : isCompleted ? "Ended" : "Seller";
+        var rightValue = isPending
+            ? sale.StartDate.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture)
+            : isCompleted
+                ? sale.EndDate.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture)
+                : sale.SellerUserName;
+
+        var rightValueClass = isPending || isCompleted ? "bid-date" : "bid-count";
+
+        return new ArtworkItem(
+            Title: sale.ItemName,
+            Meta: $"{sale.SellerUserName} · {sale.StartDate:MMM dd, yyyy}",
+            Emoji: "🖼️",
+            Status: status,
+            PriceLabel: priceLabel,
+            Price: $"${displayedPrice:0.##}",
+            RightLabel: rightLabel,
+            RightValue: rightValue,
+            RightValueClass: rightValueClass
+        );
+    }
+
+    private static string NormalizeSaleStatus(string status)
+    {
+        if (status.Equals("Active", StringComparison.OrdinalIgnoreCase)) return "Active";
+        if (status.Equals("Pending", StringComparison.OrdinalIgnoreCase)) return "Pending";
+        if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase)) return "Completed";
+        return "Active";
+    }
+
+    private IEnumerable<ArtworkItem> FilteredArtworks =>
+        Artworks.Where(a =>
+            (ActiveFilter == "All" || a.Status == ActiveFilter) &&
+            (string.IsNullOrWhiteSpace(SearchTerm) ||
+             a.Title.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+             a.Meta.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+        );
+
+    private void SetFilter(string filter) => ActiveFilter = filter;
+
+    private Appearance GetPillAppearance(string filter) =>
+        ActiveFilter == filter ? Appearance.Accent : Appearance.Outline;
+
+    private string GetBadgeClass(string status) => status switch
+    {
+        "Active" => "badge-live",
+        "Pending" => "badge-soon",
+        "Completed" => "badge-ended",
+        _ => "badge-ended"
+    };
+}

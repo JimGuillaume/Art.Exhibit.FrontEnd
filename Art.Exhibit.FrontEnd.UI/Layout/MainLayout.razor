@@ -1,3 +1,50 @@
 ﻿@inherits LayoutComponentBase
+@using Microsoft.FluentUI.AspNetCore.Components
 
-@Body
+<div class="page-shell">
+
+    <!--Navbar-->
+    <nav class="navbar">
+        <div class="container">
+            <a class="nav-brand" href="/">Art Exhibit</a>
+
+            <ul class="nav-links">
+                <li><a href="/" class="@IsActive("/")">Accueil</a></li>
+                <li><a href="/auctions" class="@IsActive("/auctions")">Liste des enchères</a></li>
+                <li><a href="/admin" class="@IsActive("/submission")">Soummettre une oeuvre</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <FluentAnchor Href="/login" Appearance="Appearance.Stealth">Sign in</FluentAnchor>
+                <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Nav.NavigateTo("/register"))">Register</FluentButton>
+            </div>
+        </div>
+    </nav>
+
+    <!--Body-->
+    <main class="page-content">
+        <div class="container">
+            @Body
+        </div>
+    </main>
+
+    <!--Footer-->
+    <footer class="site-footer">
+        <div class="container">
+            <span style="font-family:var(--font-display);">Art Exhibit</span>
+            <span>&copy; 2026 Art Exhibit — Projet d'analyse et conception'</span>
+        </div>
+    </footer>
+
+</div>
+
+@code {
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private string IsActive(string href)
+    {
+        var current = Nav.ToBaseRelativePath(Nav.Uri);
+        var target = href.TrimStart('/');
+        return current == target ? "active" : string.Empty;
+    }
+}
