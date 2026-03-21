@@ -13,4 +13,6 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddFluentUIComponents();
 
+builder.Services.AddAuthorizationCore();
+
 await builder.Build().RunAsync();
