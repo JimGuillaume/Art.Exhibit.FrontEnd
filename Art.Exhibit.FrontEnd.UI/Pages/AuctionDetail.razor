@@ -1,0 +1,237 @@
+@page "/auction-detail/{SaleId:int}"
+@using Art.Exhibit.FrontEnd.Application.DTOs
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@using Microsoft.AspNetCore.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject ISaleService SaleService
+@inject IItemService ItemService
+
+<PageTitle>@($"{(Sale is null ? "Détail de l'enchère" : Sale.ItemName)} — Art Exhibit")</PageTitle>
+
+@if (IsLoading)
+{
+    <p>Chargement des détails de l'enchère...</p>
+}
+else if (!string.IsNullOrWhiteSpace(LoadError))
+{
+    <p>@LoadError</p>
+}
+else if (Sale is null)
+{
+    <p>Enchère introuvable.</p>
+}
+else
+{
+    <FluentBreadcrumb>
+        <FluentBreadcrumbItem Href="/">Galerie</FluentBreadcrumbItem>
+        <FluentBreadcrumbItem>@Sale.ItemName</FluentBreadcrumbItem>
+    </FluentBreadcrumb>
+
+    <div class="detail-grid">
+        <div class="artwork-image-wrap fade-up">
+            <div class="artwork-image">
+                <img src="@ItemImage"
+                     alt="@Sale.ItemName"
+                     loading="lazy" />
+            </div>
+
+            <div class="artwork-provenance">
+                <div class="provenance-item">
+                    <div class="label">Vendeur</div>
+                    <div class="provenance-strong-value">@Sale.SellerUserName</div>
+                </div>
+                <div class="provenance-item">
+                    <div class="label">Statut</div>
+                    <div>@DisplayStatusLabel</div>
+                </div>
+                <div class="provenance-item">
+                    <div class="label">Début</div>
+                    <div>@Sale.StartDate.ToLocalTime().ToString("MMM d, yyyy")</div>
+                </div>
+                <div class="provenance-item">
+                    <div class="label">Fin</div>
+                    <div>@Sale.EndDate.ToLocalTime().ToString("MMM d, yyyy")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="fade-up-2">
+            <span class="badge @GetBadgeClass(DisplayStatus)">@DisplayStatusLabel</span>
+            <h1 class="artwork-name">@Sale.ItemName</h1>
+            <p class="artwork-artist">par @Sale.SellerUserName</p>
+            <p class="artwork-desc">
+                
+            </p>
+
+            <hr class="divider" />
+
+            <div class="bid-stats">
+                <div class="stat-box">
+                    <div class="label">Enchère actuelle</div>
+                    <div class="value">@CurrentBidDisplay</div>
+                    <div class="sub">ID de vente : @Sale.Id</div>
+                </div>
+                <div class="stat-box">
+                    <div class="label">Temps restant</div>
+                    <div class="value countdown-value">@Countdown</div>
+                    <div class="sub">Se termine le @Sale.EndDate.ToLocalTime().ToString("MMM d 'à' h:mm tt")</div>
+                </div>
+            </div>
+
+            <div class="bid-form-panel">
+                <div class="bid-form-title">Placez votre enchère</div>
+                <p class="bid-minimum-text">
+                    Enchère minimale : <strong>$@NextMinimumBid</strong> (incréments de 50$)
+                </p>
+                <div class="bid-input-row">
+                    <FluentNumberField @bind-Value="BidAmount"
+                                       Min="@NextMinimumBid.ToString()"
+                                       Step="50"
+                                       Placeholder="@NextMinimumBid.ToString()"
+                                       Class="bid-input-field">
+                        <span slot="start" class="bid-currency-prefix">$</span>
+                    </FluentNumberField>
+                    <FluentButton Appearance="Appearance.Accent"
+                                  Class="bid-submit-button"
+                                  OnClick="PlaceBid">Enchérir</FluentButton>
+                </div>
+                @if (!string.IsNullOrEmpty(BidMessage))
+                {
+                    <p class="bid-message">@BidMessage</p>
+                }
+            </div>
+
+            <div class="bid-history">
+                <div class="bid-history-header">Historique des enchères</div>
+                @foreach (var (bid, i) in BidHistory.Select((b, i) => (b, i)))
+                {
+                    <div class="bid-row @(i == 0 ? "top" : "")">
+                        <span class="bidder">@bid.Bidder</span>
+                        <span class="amount">@bid.Amount</span>
+                        <span class="time">@bid.Time</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int SaleId { get; set; }
+
+    private SaleDTO? Sale;
+    private bool IsLoading = true;
+    private string? LoadError;
+    private string ItemImage;
+
+    private int BidAmount;
+    private string BidMessage = string.Empty;
+
+    private record BidEntry(string Bidder, string Amount, string Time);
+    private List<BidEntry> BidHistory = [];
+
+    private decimal CurrentBid => Sale is null
+        ? 0m
+        : Convert.ToDecimal(Sale.FinalPrice > 0 ? Sale.FinalPrice : Sale.StartingPrice);
+
+    private string CurrentBidDisplay => $"${CurrentBid:N0}";
+
+    private int NextMinimumBid
+    {
+        get
+        {
+            var current = (int)Math.Ceiling(CurrentBid);
+            var remainder = current % 50;
+            return remainder == 0 ? current + 50 : current + (50 - remainder);
+        }
+    }
+
+    private string Countdown
+    {
+        get
+        {
+            if (Sale is null) return "-";
+            var remaining = Sale.EndDate - DateTime.UtcNow;
+            if (remaining <= TimeSpan.Zero) return "Terminée";
+            if (remaining.TotalDays >= 1) return $"{(int)remaining.TotalDays}j {remaining.Hours}h";
+            return $"{remaining.Hours}h {remaining.Minutes}m";
+        }
+    }
+
+    private string DisplayStatus => NormalizeSaleStatus(Sale?.Status);
+    private string DisplayStatusLabel => ToFrenchStatus(DisplayStatus);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        IsLoading = true;
+        LoadError = null;
+        BidMessage = string.Empty;
+
+        try
+        {
+            Sale = await SaleService.GetByIdAsync(SaleId);
+
+            if (Sale is not null)
+            {
+                var item = await ItemService.GetByIdAsync(Sale.ItemId);
+                if (item is not null && !string.IsNullOrWhiteSpace(item.ImageLink))
+                {
+                    ItemImage = item.ImageLink;
+                }
+
+                BidAmount = NextMinimumBid;
+                BidHistory =
+                [
+                    new BidEntry("backend", CurrentBidDisplay, DateTime.Now.ToString("h:mm tt"))
+                ];
+            }
+        }
+        catch (Exception)
+        {
+            LoadError = "Impossible de charger les détails de l'enchère depuis le backend.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void PlaceBid()
+    {
+        if (Sale is null) return;
+
+        if (BidAmount < NextMinimumBid)
+        {
+            BidMessage = $"L'enchère doit être d'au moins ${NextMinimumBid}.";
+            return;
+        }
+
+        BidMessage = string.Empty;
+        BidHistory.Insert(0, new BidEntry("vous", $"${BidAmount:N0}", DateTime.Now.ToString("h:mm tt")));
+        BidAmount += 50;
+    }
+
+    private static string NormalizeSaleStatus(string? status)
+    {
+        if (string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase)) return "Active";
+        if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase)) return "Pending";
+        if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase)) return "Completed";
+        return "Unknown";
+    }
+
+    private static string ToFrenchStatus(string status) => status switch
+    {
+        "Active" => "En cours",
+        "Pending" => "À venir",
+        "Completed" => "Terminée",
+        _ => "Inconnu"
+    };
+
+    private static string GetBadgeClass(string status) => status switch
+    {
+        "Active" => "badge-live",
+        "Pending" => "badge-soon",
+        "Completed" => "badge-ended",
+        _ => "badge-ended"
+    };
+}

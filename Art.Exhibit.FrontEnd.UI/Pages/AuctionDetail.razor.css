@@ -1,0 +1,286 @@
+/* ── Detail Layout ──────────────────────────── */
+.detail-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 3rem;
+    align-items: start;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 800px) {
+    .detail-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}
+
+/* ── Image Panel ────────────────────────────── */
+.artwork-image-wrap {
+    position: sticky;
+    top: calc(var(--nav-h) + 1.5rem);
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.artwork-image {
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, #f0ede8 0%, #e0dbd2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6rem;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+    .artwork-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--radius);
+    }
+
+/* ── Provenance Panel ───────────────────────── */
+.artwork-provenance {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--art-white);
+    border: 1px solid var(--art-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    height: fit-content;
+}
+
+.provenance-item {
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--art-border);
+    transition: background 0.15s ease;
+}
+
+    .provenance-item:last-child {
+        border-bottom: none;
+    }
+
+    .provenance-item:hover {
+        background: var(--art-cream, #faf9f7);
+    }
+
+    .provenance-item .label {
+        font-size: 0.62rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--art-light);
+        margin-bottom: 0.3rem;
+    }
+
+.provenance-strong-value {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: var(--art-dark, #1a1a1a);
+}
+
+.provenance-item > div:not(.label) {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--art-dark, #1a1a1a);
+    line-height: 1.4;
+}
+
+/* Status badge inside provenance */
+.provenance-item .provenance-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+    .provenance-item .provenance-status::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.7;
+    }
+
+/* Date values */
+.provenance-date {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+    .provenance-date .date-main {
+        font-weight: 600;
+        font-size: 0.88rem;
+        color: var(--art-dark, #1a1a1a);
+    }
+
+@media (max-width: 1100px) {
+    .artwork-image-wrap {
+        grid-template-columns: 1fr;
+    }
+
+    .artwork-provenance {
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-radius: var(--radius);
+    }
+
+    .provenance-item {
+        flex: 1 1 45%;
+        border-bottom: 1px solid var(--art-border);
+        border-right: 1px solid var(--art-border);
+    }
+
+        .provenance-item:nth-child(even) {
+            border-right: none;
+        }
+
+        .provenance-item:last-child,
+        .provenance-item:nth-last-child(2):nth-child(odd) {
+            border-bottom: none;
+        }
+}
+
+/* ── Info Panel ─────────────────────────────── */
+.artwork-name {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 400;
+    line-height: 1.2;
+    margin: 0.75rem 0 0.35rem;
+}
+
+.artwork-artist {
+    font-size: 0.9rem;
+    color: var(--art-muted);
+    margin-bottom: 1.25rem;
+}
+
+.artwork-desc {
+    font-size: 0.88rem;
+    color: var(--art-muted);
+    line-height: 1.75;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Bid Stats ──────────────────────────────── */
+.bid-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.countdown-value {
+    font-size: 1.5rem;
+}
+
+/* ── Bid Form ───────────────────────────────── */
+.bid-form-panel {
+    background: var(--art-white);
+    border: 1px solid var(--art-border);
+    border-radius: var(--radius);
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.bid-form-title {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--art-muted);
+    margin-bottom: 0.9rem;
+}
+
+.bid-minimum-text {
+    font-size: 0.8rem;
+    color: var(--art-muted);
+    margin-bottom: 0.75rem;
+}
+
+.bid-input-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.bid-input-field {
+    flex: 1;
+}
+
+.bid-currency-prefix {
+    padding-left: 0.6rem;
+    color: var(--art-muted);
+}
+
+.bid-submit-button {
+    white-space: nowrap;
+}
+
+.bid-message {
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    color: var(--art-red);
+}
+
+/* ── Bid History ────────────────────────────── */
+.bid-history {
+    background: var(--art-white);
+    border: 1px solid var(--art-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.bid-history-header {
+    padding: 0.8rem 1.1rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--art-muted);
+    border-bottom: 1px solid var(--art-border);
+    background: var(--art-cream);
+}
+
+.bid-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.1rem;
+    border-bottom: 1px solid var(--art-border);
+    font-size: 0.85rem;
+}
+
+    .bid-row:last-child {
+        border-bottom: none;
+    }
+
+    .bid-row.top {
+        background: var(--art-gold-light);
+    }
+
+    .bid-row .bidder {
+        color: var(--art-muted);
+    }
+
+    .bid-row .amount {
+        font-weight: 600;
+        font-family: var(--font-display);
+    }
+
+    .bid-row .time {
+        font-size: 0.75rem;
+        color: var(--art-light);
+    }

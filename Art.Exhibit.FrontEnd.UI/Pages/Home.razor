@@ -4,26 +4,22 @@
 @using Art.Exhibit.FrontEnd.Application.Interfaces.Services
 @using Microsoft.FluentUI.AspNetCore.Components
 @inject ISaleService SaleService
+@inject IItemService ItemService
 
 <PageTitle>Accueil — Art Exhibit</PageTitle>
 
 <div class="page-shell">
-
-    <!--Body-->
     <main class="page-content">
         <div class="container">
-
-            <!-- Hero -->
             <div class="hero">
                 <p class="hero-eyebrow">Maison de ventes aux enchères d'œuvres d'art</p>
-                <h1 class="hero-title">Découvre  &amp; collectionne<br /><em>Des oeuvres extraordinaires</em></h1>
+                <h1 class="hero-title">Découvre &amp; collectionne<br /><em>Des oeuvres extraordinaires</em></h1>
                 <p class="hero-desc">
                     Des ventes aux enchères sélectionnées avec soin, mettant à l'honneur des artistes émergents et confirmés.
                     Enchérissez en direct et remportez des oeuvres originales livrées chez vous.
                 </p>
             </div>
 
-            <!-- Filter Bar -->
             <div class="filter-bar">
                 <div class="filter-pills">
                     <FluentButton Appearance="@GetPillAppearance("All")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("All"))">Tous</FluentButton>
@@ -43,22 +39,29 @@
             }
             else
             {
-                <!-- Gallery Grid -->
                 <div class="gallery-grid">
                     @foreach (var (item, i) in FilteredArtworks.Select((x, i) => (x, i)))
                     {
                         <a class="art-card fade-up"
-                           href="/auction-detail"
-                           style="animation-delay:@(i * 0.06)s; @(item.Status == "Completed" ? "opacity:0.7;" : "")">
+                               href="@($"/auction-detail/{item.Id}")"
+                               aria-label="@($"Voir l'enchère pour {item.Title}")"
+                               style="animation-delay:@(i * 0.06)s; @(item.Status == "Completed" ? "opacity:0.7;" : "")">
+
                             <div class="art-card-img">
-                                <div class="img-placeholder">@item.Emoji</div>
+                                <img src="@item.Image"
+                                     alt="@item.Title"
+                                     loading="lazy"
+                                     onerror="this.onerror=null;this.src='/images/placeholder-art.jpg';" />
+
                                 <div class="card-badge-wrap">
                                     <span class="badge @GetBadgeClass(item.Status)">@item.Status</span>
                                 </div>
                             </div>
+
                             <div class="art-card-body">
                                 <div class="art-card-title">@item.Title</div>
                                 <div class="art-card-meta">@item.Meta</div>
+
                                 <div class="art-card-footer">
                                     <div>
                                         <div class="bid-label">@item.PriceLabel</div>
@@ -83,21 +86,33 @@
     private string SearchTerm = string.Empty;
     private bool IsLoading = true;
     private string? LoadError;
+    private const string FallbackImage = "https://picsum.photos/200";
 
     private record ArtworkItem(
-        string Title, string Meta, string Emoji, string Status,
-        string PriceLabel, string Price,
-        string RightLabel, string RightValue, string RightValueClass
+        int Id,
+        string Title,
+        string Meta,
+        string Image,
+        string Status,
+        string PriceLabel,
+        string Price,
+        string RightLabel,
+        string RightValue,
+        string RightValueClass
     );
 
     private List<ArtworkItem> Artworks = [];
+    private List<ItemDTO> Items = [];
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             var sales = (await SaleService.GetAllAsync()).ToList();
-            Artworks = sales.Select(MapToArtworkItem).ToList();
+            Items = (await ItemService.GetAllAsync()).ToList();
+
+            var itemsById = Items.ToDictionary(x => x.Id);
+            Artworks = sales.Select(sale => MapToArtworkItem(sale, itemsById)).ToList();
         }
         catch (Exception)
         {
@@ -109,7 +124,7 @@
         }
     }
 
-    private static ArtworkItem MapToArtworkItem(SaleDTO sale)
+    private static ArtworkItem MapToArtworkItem(SaleDTO sale, IReadOnlyDictionary<int, ItemDTO> itemsById)
     {
         var status = NormalizeSaleStatus(sale.Status);
         var isCompleted = status == "Completed";
@@ -122,18 +137,38 @@
         var priceLabel = isCompleted ? "Sold For" : isPending ? "Starting Bid" : "Current Bid";
 
         var rightLabel = isPending ? "Starts" : isCompleted ? "Ended" : "Seller";
-        var rightValue = isPending
-            ? sale.StartDate.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture)
-            : isCompleted
-                ? sale.EndDate.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture)
-                : sale.SellerUserName;
+
+        string rightValue;
+        if (isPending)
+        {
+            rightValue = sale.StartDate.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
+        }
+        else if (isCompleted)
+        {
+            rightValue = sale.EndDate.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            rightValue = sale.SellerUserName;
+        }
 
         var rightValueClass = isPending || isCompleted ? "bid-date" : "bid-count";
 
+        string image;
+        if (itemsById.TryGetValue(sale.ItemId, out var item) && !string.IsNullOrWhiteSpace(item.ImageLink))
+        {
+            image = item.ImageLink;
+        }
+        else
+        {
+            image = FallbackImage;
+        }
+
         return new ArtworkItem(
+            Id: sale.Id,
             Title: sale.ItemName,
             Meta: $"{sale.SellerUserName} · {sale.StartDate:MMM dd, yyyy}",
-            Emoji: "🖼️",
+            Image: image,
             Status: status,
             PriceLabel: priceLabel,
             Price: $"${displayedPrice:0.##}",
@@ -156,8 +191,7 @@
             (ActiveFilter == "All" || a.Status == ActiveFilter) &&
             (string.IsNullOrWhiteSpace(SearchTerm) ||
              a.Title.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
-             a.Meta.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
-        );
+             a.Meta.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase)));
 
     private void SetFilter(string filter) => ActiveFilter = filter;
 

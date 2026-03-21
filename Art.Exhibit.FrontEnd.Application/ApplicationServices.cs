@@ -20,6 +20,7 @@ public static class ApplicationServices
         services.AddScoped<ISubmissionService, SubmissionService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<ISaleService, SaleService>();
+        services.AddScoped<IBidService, BidService>();
 
         return services;
     }
