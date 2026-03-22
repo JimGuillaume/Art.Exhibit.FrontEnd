@@ -1,9 +1,10 @@
 ﻿@inherits LayoutComponentBase
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.FluentUI.AspNetCore.Components
+@inject IAuthService AuthService
 
 <div class="page-shell">
-
-    <!--Navbar-->
     <nav class="navbar">
         <div class="container">
             <a class="nav-brand" href="/">Art Exhibit</a>
@@ -11,31 +12,35 @@
             <ul class="nav-links">
                 <li><a href="/" class="@IsActive("/")">Accueil</a></li>
                 <li><a href="/auctions" class="@IsActive("/auctions")">Liste des enchères</a></li>
-                <li><a href="/admin" class="@IsActive("/submission")">Soummettre une oeuvre</a></li>
+                <li><a href="/submit" class="@IsActive("/submit")">Soumettre une oeuvre</a></li>
             </ul>
 
             <div class="nav-actions">
-                <FluentAnchor Href="/login" Appearance="Appearance.Stealth">Sign in</FluentAnchor>
-                <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Nav.NavigateTo("/register"))">Register</FluentButton>
+                <AuthorizeView>
+                    <Authorized>
+                        <FluentButton Appearance="Appearance.Stealth" OnClick="LogoutAsync">Sign out</FluentButton>
+                    </Authorized>
+                    <NotAuthorized>
+                        <FluentAnchor Href="/login" Appearance="Appearance.Stealth">Sign in</FluentAnchor>
+                        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Nav.NavigateTo("/register"))">Register</FluentButton>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
         </div>
     </nav>
 
-    <!--Body-->
     <main class="page-content">
         <div class="container">
             @Body
         </div>
     </main>
 
-    <!--Footer-->
     <footer class="site-footer">
         <div class="container">
             <span style="font-family:var(--font-display);">Art Exhibit</span>
             <span>&copy; 2026 Art Exhibit — Projet d'analyse et conception'</span>
         </div>
     </footer>
-
 </div>
 
 @code {
@@ -46,5 +51,11 @@
         var current = Nav.ToBaseRelativePath(Nav.Uri);
         var target = href.TrimStart('/');
         return current == target ? "active" : string.Empty;
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthService.LogoutAsync();
+        Nav.NavigateTo("/");
     }
 }

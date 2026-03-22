@@ -1,0 +1,242 @@
+/* ── Login.razor.css ─────────────────────────────────────
+   Scoped styles for the Login page.
+   Global tokens (--art-*, --radius, etc.) and .navbar / .site-footer
+   base styles should live in your shared app.css / shared.css.
+   ──────────────────────────────────────────────────────── */
+
+/* ── Layout ─────────────────────────────────────────────── */
+:root {
+    /* Override or define tokens here if not already in app.css */
+    --art-gold:         #b8963e;
+    --art-gold-light:   #fdf6e3;
+    --art-muted:        #888;
+    --art-light:        #aaa;
+    --art-border:       #e0d6c8;
+    --art-text:         #1a1a1a;
+    --radius:           0.5rem;
+    --font-display:     'Georgia', serif;
+}
+
+/* Make the page fill the viewport vertically */
+::deep body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* ── Navbar ─────────────────────────────────────────────── */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #fff;
+    border-bottom: 1px solid var(--art-border);
+    padding: 0.75rem 0;
+}
+
+.navbar .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nav-brand {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--art-text);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+}
+
+.nav-brand em {
+    color: var(--art-gold);
+    font-style: italic;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nav-hint {
+    font-size: 0.82rem;
+    color: var(--art-muted);
+}
+
+/* ── Auth Shell ─────────────────────────────────────────── */
+.auth-shell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.25rem;
+    background: #faf8f5;
+}
+
+.auth-panel {
+    width: 100%;
+    max-width: 420px;
+    animation: fadeUp 0.35s ease both;
+}
+
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Auth Logo ──────────────────────────────────────────── */
+.auth-logo {
+    display: block;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--art-text);
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.01em;
+}
+
+.auth-logo em {
+    color: var(--art-gold);
+    font-style: italic;
+}
+
+/* ── Auth Card ──────────────────────────────────────────── */
+.auth-card {
+    background: #fff;
+    border: 1px solid var(--art-border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.auth-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--art-text);
+    margin: 0 0 0.25rem;
+}
+
+.auth-sub {
+    font-size: 0.875rem;
+    color: var(--art-muted);
+    margin: 0 0 1.5rem;
+}
+
+/* ── Error Banner ───────────────────────────────────────── */
+.login-error {
+    margin-bottom: 1rem;
+}
+
+/* ── Form Fields ────────────────────────────────────────── */
+.field-group {
+    margin-bottom: 1rem;
+}
+
+.field-group:last-of-type {
+    margin-bottom: 1.5rem;
+}
+
+.field-label {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--art-muted);
+    margin-bottom: 0.4rem;
+}
+
+.field-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+}
+
+.forgot-link {
+    font-size: 0.78rem;
+    color: var(--art-gold);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ── Divider ────────────────────────────────────────────── */
+.divider-or {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--art-light);
+    font-size: 0.75rem;
+    margin: 1.25rem 0;
+}
+
+.divider-or::before,
+.divider-or::after {
+    content: '';
+    flex: 1;
+    border-top: 1px solid var(--art-border);
+}
+
+/* ── Footer Text ────────────────────────────────────────── */
+.auth-footer-text {
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--art-muted);
+    margin-top: 1.25rem;
+}
+
+.auth-footer-text a {
+    color: var(--art-text);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* ── Dev Hint ───────────────────────────────────────────── */
+.dev-hint {
+    margin-top: 1.25rem;
+    padding: 0.75rem 1rem;
+    background: var(--art-gold-light);
+    border: 1px solid #e8d9b5;
+    border-radius: var(--radius);
+    font-size: 0.78rem;
+    color: var(--art-gold);
+    text-align: center;
+}
+
+/* ── Site Footer ────────────────────────────────────────── */
+.site-footer {
+    border-top: 1px solid var(--art-border);
+    padding: 1rem 0;
+    background: #fff;
+}
+
+.site-footer .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--art-muted);
+}
+
+.footer-brand {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--art-text);
+}
+
+.footer-brand em {
+    color: var(--art-gold);
+    font-style: italic;
+}

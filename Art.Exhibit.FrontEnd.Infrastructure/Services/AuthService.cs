@@ -1,3 +1,4 @@
+using System.Net;
 using Art.Exhibit.FrontEnd.Application.DTOs;
 using Art.Exhibit.FrontEnd.Application.Interfaces.Auth;
 using Art.Exhibit.FrontEnd.Application.Interfaces.HttpClients;
@@ -24,14 +25,21 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDTO?> LoginAsync(LoginDTO dto)
     {
-        var response = await _apiClient.PostAsync<LoginDTO, AuthResponseDTO>("user/login", dto);
-        if (response is null || string.IsNullOrWhiteSpace(response.AccessToken))
+        try
+        {
+            var response = await _apiClient.PostAsync<LoginDTO, AuthResponseDTO>("user/login", dto);
+            if (response is null || string.IsNullOrWhiteSpace(response.AccessToken))
+                return null;
+
+            await _tokenStore.SetAsync(response.AccessToken, response.AccessTokenExpiresAtUtc);
+            _authStateProvider.NotifyUserAuthentication(response.AccessToken);
+
+            return response;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+        {
             return null;
-
-        await _tokenStore.SetAsync(response.AccessToken, response.AccessTokenExpiresAtUtc);
-        _authStateProvider.NotifyUserAuthentication(response.AccessToken);
-
-        return response;
+        }
     }
 
     public async Task LogoutAsync()

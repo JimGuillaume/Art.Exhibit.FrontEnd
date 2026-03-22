@@ -1,0 +1,132 @@
+@page "/login"
+@using Art.Exhibit.FrontEnd.Application.DTOs
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Microsoft.AspNetCore.WebUtilities
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Connexion — Art Exhibit</PageTitle>
+
+<!--Auth Shell -->
+<div class="auth-shell">
+    <div class="auth-panel">
+
+        <a class="auth-logo" href="/">Art Exhibit</a>
+
+        <div class="auth-card">
+
+            <h1 class="auth-title">Bon retour parmi nous</h1>
+            <p class="auth-sub">Connectez-vous pour enchérir sur des oeuvres d'art</p>
+
+            @if (showError)
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error" class="login-error">
+                    Adresse e-mail ou mot de passe incorrect. Veuillez réessayer.
+                </FluentMessageBar>
+            }
+
+            <!-- Email -->
+            <div class="field-group">
+                <label class="field-label">Email</label>
+                <FluentTextField
+                    @bind-Value="email"
+                    TextFieldType="TextFieldType.Email"
+                    Placeholder="exemple@exemple.com"
+                    style="width:100%;"
+                    Disabled="@isBusy" />
+            </div>
+
+            <!-- Password -->
+            <div class="field-group">
+                <div class="field-label-row">
+                    <label class="field-label">Mot de passe</label>
+                </div>
+                <FluentTextField
+                    @bind-Value="password"
+                    TextFieldType="TextFieldType.Password"
+                    Placeholder="••••••••"
+                    style="width:100%;"
+                    Disabled="@isBusy" />
+            </div>
+
+            <!-- Submit -->
+            <FluentButton Appearance="Appearance.Accent"
+                          style="width:100%;"
+                          OnClick="HandleLoginAsync"
+                          Disabled="@isBusy">
+                @(isBusy ? "Connexion..." : "Connexion")
+            </FluentButton>
+
+        </div>
+
+        <p class="auth-footer-text">
+            Don't have an account? <a href="/register">Create one free</a>
+        </p>
+
+        <div class="dev-hint">
+            Présentation projet: <strong>admin@example.com | Password123!</strong> pour le compte administrateur
+        </div>
+
+    </div>
+</div>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private bool showError;
+    private bool isBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await AuthService.IsAuthenticatedAsync())
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        showError = false;
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            showError = true;
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var response = await AuthService.LoginAsync(new LoginDTO
+            {
+                Email = email.Trim(),
+                Password = password
+            });
+
+            if (response is null)
+            {
+                showError = true;
+                return;
+            }
+
+            var returnUrl = GetReturnUrl() ?? "/";
+            Navigation.NavigateTo(returnUrl);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private string? GetReturnUrl()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("returnUrl", out var value))
+            return value.ToString();
+
+        return null;
+    }
+}
