@@ -5,6 +5,7 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @inject ISaleService SaleService
 @inject IItemService ItemService
+@inject IBidService BidService
 
 <PageTitle>@($"{(Sale is null ? "Détail de l'enchère" : Sale.ItemName)} — Art Exhibit")</PageTitle>
 
@@ -103,13 +104,24 @@ else
 
             <div class="bid-history">
                 <div class="bid-history-header">Historique des enchères</div>
-                @foreach (var (bid, i) in BidHistory.Select((b, i) => (b, i)))
+                @if (BidHistory.Count == 0)
                 {
-                    <div class="bid-row @(i == 0 ? "top" : "")">
-                        <span class="bidder">@bid.Bidder</span>
-                        <span class="amount">@bid.Amount</span>
-                        <span class="time">@bid.Time</span>
+                    <div class="bid-row">
+                        <span class="bidder">Aucune enchère</span>
+                        <span class="amount">-</span>
+                        <span class="time">-</span>
                     </div>
+                }
+                else
+                {
+                    @foreach (var (bid, i) in BidHistory.Select((b, i) => (b, i)))
+                    {
+                        <div class="bid-row @(i == 0 ? "top" : "")">
+                            <span class="bidder">@bid.Bidder</span>
+                            <span class="amount">@bid.Amount</span>
+                            <span class="time">@bid.Time</span>
+                        </div>
+                    }
                 }
             </div>
         </div>
@@ -122,17 +134,19 @@ else
     private SaleDTO? Sale;
     private bool IsLoading = true;
     private string? LoadError;
-    private string ItemImage;
+    private string ItemImage = "https://placehold.co/500";
 
     private int BidAmount;
     private string BidMessage = string.Empty;
 
     private record BidEntry(string Bidder, string Amount, string Time);
     private List<BidEntry> BidHistory = [];
+    private decimal? HighestBidAmount;
 
-    private decimal CurrentBid => Sale is null
-        ? 0m
-        : Convert.ToDecimal(Sale.FinalPrice > 0 ? Sale.FinalPrice : Sale.StartingPrice);
+    private decimal CurrentBid => HighestBidAmount
+        ?? (Sale is null
+            ? 0m
+            : Convert.ToDecimal(Sale.FinalPrice > 0 ? Sale.FinalPrice : Sale.StartingPrice));
 
     private string CurrentBidDisplay => $"${CurrentBid:N0}";
 
@@ -179,11 +193,23 @@ else
                     ItemImage = item.ImageLink;
                 }
 
+                var bids = await BidService.GetBySaleIdAsync(SaleId);
+                var sortedBids = bids
+                    .OrderByDescending(b => b.PlacedAtUtc)
+                    .ToList();
+
+                HighestBidAmount = sortedBids.Count > 0
+                    ? Convert.ToDecimal(sortedBids.Max(b => b.Amount))
+                    : null;
+
+                BidHistory = sortedBids
+                    .Select(b => new BidEntry(
+                        string.IsNullOrWhiteSpace(b.BuyerUserName) ? "inconnu" : b.BuyerUserName,
+                        $"${Convert.ToDecimal(b.Amount):N0}",
+                        b.PlacedAtUtc.ToLocalTime().ToString("h:mm tt")))
+                    .ToList();
+
                 BidAmount = NextMinimumBid;
-                BidHistory =
-                [
-                    new BidEntry("backend", CurrentBidDisplay, DateTime.Now.ToString("h:mm tt"))
-                ];
             }
         }
         catch (Exception)
@@ -208,7 +234,8 @@ else
 
         BidMessage = string.Empty;
         BidHistory.Insert(0, new BidEntry("vous", $"${BidAmount:N0}", DateTime.Now.ToString("h:mm tt")));
-        BidAmount += 50;
+        HighestBidAmount = BidAmount;
+        BidAmount = NextMinimumBid;
     }
 
     private static string NormalizeSaleStatus(string? status)

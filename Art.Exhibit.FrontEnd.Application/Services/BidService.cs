@@ -11,8 +11,8 @@ public class BidService : IBidService
     public BidService(IArtExhibitApiClient apiClient) => _apiClient = apiClient;
 
     public async Task<IEnumerable<BidDTO>> GetBySaleIdAsync(int saleId)
-        => await _apiClient.GetAsync<IEnumerable<BidDTO>>($"sale/{saleId}/bid") ?? [];
+        => await _apiClient.GetAsync<IEnumerable<BidDTO>>($"sale/{saleId}/bids") ?? [];
 
     public async Task<BidDTO?> PlaceBidAsync(int saleId, PlaceBidDTO dto)
-        => await _apiClient.PostAsync<PlaceBidDTO, BidDTO>($"sale/{saleId}/bid", dto);
+        => await _apiClient.PostAsync<PlaceBidDTO, BidDTO>($"sale/{saleId}/bids", dto);
 }
