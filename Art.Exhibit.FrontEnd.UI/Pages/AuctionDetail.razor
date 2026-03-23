@@ -89,11 +89,13 @@ else
                                        Min="@NextMinimumBid.ToString()"
                                        Step="50"
                                        Placeholder="@NextMinimumBid.ToString()"
+                                       Disabled="@(!CanPlaceBid)"
                                        Class="bid-input-field">
                         <span slot="start" class="bid-currency-prefix">$</span>
                     </FluentNumberField>
                     <FluentButton Appearance="Appearance.Accent"
                                   Class="bid-submit-button"
+                                  Disabled="@(!CanPlaceBid)"
                                   OnClick="PlaceBid">Enchérir</FluentButton>
                 </div>
                 @if (!string.IsNullOrEmpty(BidMessage))
@@ -149,7 +151,6 @@ else
             : Convert.ToDecimal(Sale.FinalPrice > 0 ? Sale.FinalPrice : Sale.StartingPrice));
 
     private string CurrentBidDisplay => $"${CurrentBid:N0}";
-
     private int NextMinimumBid
     {
         get
@@ -171,9 +172,20 @@ else
             return $"{remaining.Hours}h {remaining.Minutes}m";
         }
     }
+    
+    private bool CanPlaceBid =>
+        Sale?.Status == "Active" &&
+        (Sale.EndDate - DateTime.UtcNow).TotalMinutes > 0;
 
     private string DisplayStatus => NormalizeSaleStatus(Sale?.Status);
-    private string DisplayStatusLabel => ToFrenchStatus(DisplayStatus);
+
+    private string DisplayStatusLabel => DisplayStatus switch
+    {
+        "Active" => "En cours",
+        "Pending" => "À venir",
+        "Completed" => "Terminée",
+        _ => "Inconnu"
+    };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -226,6 +238,12 @@ else
     {
         if (Sale is null) return;
 
+        if (!CanPlaceBid)
+        {
+            BidMessage = "Cette enchère n'est pas active.";
+            return;
+        }
+
         if (BidAmount < NextMinimumBid)
         {
             BidMessage = $"L'enchère doit être d'au moins ${NextMinimumBid}.";
@@ -245,14 +263,6 @@ else
         if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase)) return "Completed";
         return "Unknown";
     }
-
-    private static string ToFrenchStatus(string status) => status switch
-    {
-        "Active" => "En cours",
-        "Pending" => "À venir",
-        "Completed" => "Terminée",
-        _ => "Inconnu"
-    };
 
     private static string GetBadgeClass(string status) => status switch
     {

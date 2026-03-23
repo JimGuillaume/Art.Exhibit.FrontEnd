@@ -1,0 +1,130 @@
+@page "/register"
+@using Art.Exhibit.FrontEnd.Application.DTOs
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Register — Gavel &amp; Art</PageTitle>
+
+<div class="auth-shell">
+    <div class="auth-panel">
+
+        <a class="auth-logo" href="/">Art Exhibit</a>
+
+        <div class="auth-card">
+            <h1 class="auth-title">Créez votre compte</h1>
+            <p class="auth-sub">Inscrivez-vous pour commencer à enchérir sur des oeuvres d'art originales</p>
+
+            @if (showError)
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error" class="login-error">
+                    @errorMessage
+                </FluentMessageBar>
+            }
+
+            <div class="field-row">
+                <div class="field-group">
+                    <label class="field-label">Prénom</label>
+                    <FluentTextField @bind-Value="FirstName" Placeholder="Jim" style="width:100%;" Disabled="@isBusy" />
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Nom</label>
+                    <FluentTextField @bind-Value="LastName" Placeholder="Guillaume" style="width:100%;" Disabled="@isBusy" />
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label class="field-label">Nom d'utilisateur</label>
+                <FluentTextField @bind-Value="UserName" Placeholder="jim_guillaume" style="width:100%;" Disabled="@isBusy" />
+            </div>
+
+            <div class="field-group">
+                <label class="field-label">Email</label>
+                <FluentTextField @bind-Value="Email" TextFieldType="TextFieldType.Email" Placeholder="exemple@exemple.com" style="width:100%;" Disabled="@isBusy" />
+            </div>
+
+            <div class="field-group">
+                <label class="field-label">Mot de Passe</label>
+                <FluentTextField @bind-Value="Password" TextFieldType="TextFieldType.Password" Placeholder="Min 8 caractères" style="width:100%;" Disabled="@isBusy" />
+            </div>
+
+            <div class="field-group confirm-group">
+                <label class="field-label">Confirmer le mot de passe</label>
+                <FluentTextField @bind-Value="ConfirmPassword" TextFieldType="TextFieldType.Password" Placeholder="Confirmez votre mot de passe" style="width:100%;" Disabled="@isBusy" />
+            </div>
+
+            <FluentButton Appearance="Appearance.Accent" style="width:100%;" OnClick="HandleRegisterAsync" Disabled="@isBusy">
+                @(isBusy ? "Création..." : "Créer un compte")
+            </FluentButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string FirstName { get; set; } = string.Empty;
+    private string LastName { get; set; } = string.Empty;
+    private string UserName { get; set; } = string.Empty;
+    private string Email { get; set; } = string.Empty;
+    private string Password { get; set; } = string.Empty;
+    private string ConfirmPassword { get; set; } = string.Empty;
+
+    private bool isBusy;
+    private bool showError;
+    private string errorMessage = "Impossible de créer le compte. Veuillez réessayer.";
+
+    private async Task HandleRegisterAsync()
+    {
+        showError = false;
+
+        if (string.IsNullOrWhiteSpace(FirstName)
+            || string.IsNullOrWhiteSpace(LastName)
+            || string.IsNullOrWhiteSpace(UserName)
+            || string.IsNullOrWhiteSpace(Email)
+            || string.IsNullOrWhiteSpace(Password))
+        {
+            showError = true;
+            errorMessage = "Veuillez renseigner tous les champs requis.";
+            return;
+        }
+
+        if (!Password.Equals(ConfirmPassword, StringComparison.Ordinal))
+        {
+            showError = true;
+            errorMessage = "Les mots de passe ne correspondent pas.";
+            return;
+        }
+
+        isBusy = true;
+
+        try
+        {
+            var response = await AuthService.RegisterAsync(new RegisterDTO
+            {
+                UserName = UserName.Trim(),
+                FirstName = FirstName.Trim(),
+                LastName = LastName.Trim(),
+                Email = Email.Trim(),
+                Password = Password
+            });
+
+            if (response is null)
+            {
+                showError = true;
+                errorMessage = "Inscription impossible. Vérifiez les informations saisies.";
+                return;
+            }
+
+            Navigation.NavigateTo("/");
+        }
+        catch
+        {
+            showError = true;
+            errorMessage = "Une erreur est survenue lors de l'inscription.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

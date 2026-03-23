@@ -11,7 +11,7 @@
 
             <ul class="nav-links">
                 <li><a href="/" class="@IsActive("/")">Accueil</a></li>
-                <li><a href="/auctions" class="@IsActive("/auctions")">Liste des enchères</a></li>
+                <li><a href="/dashboard" class="@IsActive("/dashboard")">Tableau de bord</a></li>
                 <li><a href="/submit" class="@IsActive("/submit")">Soumettre une oeuvre</a></li>
             </ul>
 
@@ -21,8 +21,8 @@
                         <FluentButton Appearance="Appearance.Stealth" OnClick="LogoutAsync">Sign out</FluentButton>
                     </Authorized>
                     <NotAuthorized>
-                        <FluentAnchor Href="/login" Appearance="Appearance.Stealth">Sign in</FluentAnchor>
-                        <FluentButton Appearance="Appearance.Accent" OnClick="@(() => Nav.NavigateTo("/register"))">Register</FluentButton>
+                        <FluentAnchor Href="/login" Appearance="Appearance.Stealth">Connexion</FluentAnchor>
+                        <FluentAnchor Href="/register" Appearance="Appearance.Accent">Inscription</FluentAnchor>
                     </NotAuthorized>
                 </AuthorizeView>
             </div>

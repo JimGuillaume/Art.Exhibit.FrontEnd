@@ -23,9 +23,9 @@
             <div class="filter-bar">
                 <div class="filter-pills">
                     <FluentButton Appearance="@GetPillAppearance("All")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("All"))">Tous</FluentButton>
-                    <FluentButton Appearance="@GetPillAppearance("Active")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Active"))">En vente</FluentButton>
+                    <FluentButton Appearance="@GetPillAppearance("Active")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Active"))">En cours</FluentButton>
                     <FluentButton Appearance="@GetPillAppearance("Pending")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Pending"))">A venir</FluentButton>
-                    <FluentButton Appearance="@GetPillAppearance("Completed")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Completed"))">Complétées</FluentButton>
+                    <FluentButton Appearance="@GetPillAppearance("Completed")" Size="ButtonSize.Small" OnClick="@(() => SetFilter("Completed"))">Terminée</FluentButton>
                 </div>
             </div>
 
@@ -54,7 +54,7 @@
                                      onerror="this.onerror=null;this.src='/images/placeholder-art.jpg';" />
 
                                 <div class="card-badge-wrap">
-                                    <span class="badge @GetBadgeClass(item.Status)">@item.Status</span>
+                                    <span class="badge @GetBadgeClass(item.Status)">@GetDisplayStatusLabel(item.Status)</span>
                                 </div>
                             </div>
 
@@ -204,5 +204,13 @@
         "Pending" => "badge-soon",
         "Completed" => "badge-ended",
         _ => "badge-ended"
+    };
+
+    private static string GetDisplayStatusLabel(string status) => status switch
+    {
+        "Active" => "En cours",
+        "Pending" => "À venir",
+        "Completed" => "Terminée",
+        _ => "Inconnu"
     };
 }

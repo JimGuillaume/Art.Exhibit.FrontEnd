@@ -42,6 +42,25 @@ public class AuthService : IAuthService
         }
     }
 
+    public async Task<AuthResponseDTO?> RegisterAsync(RegisterDTO dto)
+    {
+        try
+        {
+            var response = await _apiClient.PostAsync<RegisterDTO, AuthResponseDTO>("user/register", dto);
+            if (response is null || string.IsNullOrWhiteSpace(response.AccessToken))
+                return null;
+
+            await _tokenStore.SetAsync(response.AccessToken, response.AccessTokenExpiresAtUtc);
+            _authStateProvider.NotifyUserAuthentication(response.AccessToken);
+
+            return response;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        {
+            return null;
+        }
+    }
+
     public async Task LogoutAsync()
     {
         await _tokenStore.ClearAsync();
