@@ -119,8 +119,10 @@ else
                 }
                 else
                 {
-                    @foreach (var (bid, i) in BidHistory.Select((b, i) => (b, i)))
+                    @for (var i = 0; i < BidHistory.Count; i++)
                     {
+                        var bid = BidHistory[i];
+
                         <div class="bid-row @(i == 0 ? "top" : "")">
                             <span class="bidder">@bid.Bidder</span>
                             <span class="amount">@bid.Amount</span>
