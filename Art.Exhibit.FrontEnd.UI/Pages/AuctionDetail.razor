@@ -1,11 +1,14 @@
 @page "/auction-detail/{SaleId:int}"
+@using System.Security.Claims
 @using Art.Exhibit.FrontEnd.Application.DTOs
 @using Art.Exhibit.FrontEnd.Application.Interfaces.Services
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.FluentUI.AspNetCore.Components
 @inject ISaleService SaleService
 @inject IItemService ItemService
 @inject IBidService BidService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>@($"{(Sale is null ? "Détail de l'enchère" : Sale.ItemName)} — Art Exhibit")</PageTitle>
 
@@ -82,7 +85,7 @@ else
             <div class="bid-form-panel">
                 <div class="bid-form-title">Placez votre enchère</div>
                 <p class="bid-minimum-text">
-                    Enchère minimale : <strong>$@NextMinimumBid</strong> (incréments de 50$)
+                    Enchère minimale : <strong>€@NextMinimumBid</strong> (incréments de 50€)
                 </p>
                 <div class="bid-input-row">
                     <FluentNumberField @bind-Value="BidAmount"
@@ -91,7 +94,7 @@ else
                                        Placeholder="@NextMinimumBid.ToString()"
                                        Disabled="@(!CanPlaceBid)"
                                        Class="bid-input-field">
-                        <span slot="start" class="bid-currency-prefix">$</span>
+                        <span slot="start" class="bid-currency-prefix">€</span>
                     </FluentNumberField>
                     <FluentButton Appearance="Appearance.Accent"
                                   Class="bid-submit-button"
@@ -140,6 +143,7 @@ else
 
     private int BidAmount;
     private string BidMessage = string.Empty;
+    private bool IsSubmittingBid;
 
     private record BidEntry(string Bidder, string Amount, string Time);
     private List<BidEntry> BidHistory = [];
@@ -150,7 +154,7 @@ else
             ? 0m
             : Convert.ToDecimal(Sale.FinalPrice > 0 ? Sale.FinalPrice : Sale.StartingPrice));
 
-    private string CurrentBidDisplay => $"${CurrentBid:N0}";
+    private string CurrentBidDisplay => $"€{CurrentBid:N0}";
     private int NextMinimumBid
     {
         get
@@ -175,7 +179,8 @@ else
     
     private bool CanPlaceBid =>
         Sale?.Status == "Active" &&
-        (Sale.EndDate - DateTime.UtcNow).TotalMinutes > 0;
+        (Sale.EndDate - DateTime.UtcNow).TotalMinutes > 0 &&
+        !IsSubmittingBid;
 
     private string DisplayStatus => NormalizeSaleStatus(Sale?.Status);
 
@@ -217,7 +222,7 @@ else
                 BidHistory = sortedBids
                     .Select(b => new BidEntry(
                         string.IsNullOrWhiteSpace(b.BuyerUserName) ? "inconnu" : b.BuyerUserName,
-                        $"${Convert.ToDecimal(b.Amount):N0}",
+                        $"€{Convert.ToDecimal(b.Amount):N0}",
                         b.PlacedAtUtc.ToLocalTime().ToString("h:mm tt")))
                     .ToList();
 
@@ -234,7 +239,7 @@ else
         }
     }
 
-    private void PlaceBid()
+    private async Task PlaceBid()
     {
         if (Sale is null) return;
 
@@ -246,14 +251,79 @@ else
 
         if (BidAmount < NextMinimumBid)
         {
-            BidMessage = $"L'enchère doit être d'au moins ${NextMinimumBid}.";
+            BidMessage = $"L'enchère doit être d'au moins €{NextMinimumBid}.";
             return;
         }
 
-        BidMessage = string.Empty;
-        BidHistory.Insert(0, new BidEntry("vous", $"${BidAmount:N0}", DateTime.Now.ToString("h:mm tt")));
-        HighestBidAmount = BidAmount;
+        var buyerId = await GetCurrentUserIdAsync();
+        if (buyerId is null)
+        {
+            BidMessage = "Vous devez être connecté pour placer une enchère.";
+            return;
+        }
+
+        IsSubmittingBid = true;
+        try
+        {
+            var submittedAmount = BidAmount;
+
+            await BidService.PlaceBidAsync(Sale.Id, new PlaceBidDTO
+            {
+                BuyerId = buyerId.Value,
+                BidAmount = submittedAmount
+            });
+
+            await RefreshBidsAsync();
+            BidMessage = "Enchère placée avec succès.";
+        }
+        catch
+        {
+            BidMessage = "Erreur lors de l'enregistrement de l'enchère.";
+        }
+        finally
+        {
+            IsSubmittingBid = false;
+        }
+    }
+
+    private async Task RefreshBidsAsync()
+    {
+        var bids = await BidService.GetBySaleIdAsync(SaleId);
+        var sortedBids = bids
+            .OrderByDescending(b => b.PlacedAtUtc)
+            .ToList();
+
+        HighestBidAmount = sortedBids.Count > 0
+            ? Convert.ToDecimal(sortedBids.Max(b => b.Amount))
+            : null;
+
+        BidHistory = sortedBids
+            .Select(b => new BidEntry(
+                string.IsNullOrWhiteSpace(b.BuyerUserName) ? "inconnu" : b.BuyerUserName,
+                $"€{Convert.ToDecimal(b.Amount):N0}",
+                b.PlacedAtUtc.ToLocalTime().ToString("h:mm tt")))
+            .ToList();
+
         BidAmount = NextMinimumBid;
+    }
+
+    private async Task<int?> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+            return null;
+
+        var userIdValue =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("nameid")?.Value
+            ?? user.FindFirst("sub")?.Value
+            ?? user.FindFirst("userid")?.Value
+            ?? user.FindFirst("userId")?.Value
+            ?? user.FindFirst("id")?.Value;
+
+        return int.TryParse(userIdValue, out var userId) ? userId : null;
     }
 
     private static string NormalizeSaleStatus(string? status)

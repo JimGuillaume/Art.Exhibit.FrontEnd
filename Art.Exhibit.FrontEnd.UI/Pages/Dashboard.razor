@@ -1,0 +1,743 @@
+@page "/dashboard"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Art.Exhibit.FrontEnd.Application.DTOs
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@attribute [Authorize]
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISaleService SaleService
+@inject IBidService BidService
+@inject NavigationManager Navigation
+
+<PageTitle>Dashboard — Art Exhibit</PageTitle>
+
+<div class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-label">Vue d’ensemble</div>
+            <div class="@SidebarClass(DashboardSection.Profile)"
+                 @onclick="async () => await SelectSectionAsync(DashboardSection.Profile)">
+                <span class="icon">📊</span> Profil
+            </div>
+            <div class="@SidebarClass(DashboardSection.Auctions)"
+                 @onclick="async () => await SelectSectionAsync(DashboardSection.Auctions)">
+                <span class="icon">🎨</span> Historique
+            </div>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-label">Gestion (Pas réussis à implémenter l'authorisation seulement pour administrateur')</div>
+            <div class="@SidebarClass(DashboardSection.Users)"
+                 @onclick="async () => await SelectSectionAsync(DashboardSection.Users)"><span class="icon">👤</span> Utilisateurs</div>
+            <div class="@SidebarClass(DashboardSection.Bids)"
+                 @onclick="async () => await SelectSectionAsync(DashboardSection.Bids)"><span class="icon">💰</span> Mises</div>
+        </div>
+    </aside>
+
+    <main class="dashboard-main">
+
+        @if (SelectedSection == DashboardSection.Profile)
+        {
+            <div class="page-header fade-up">
+                <div>
+                    <h1 class="page-title">Mon profil</h1>
+                    <p class="page-subtitle">Consultez et modifiez vos informations personnelles</p>
+                </div>
+            </div>
+
+            <div class="panel fade-up-2">
+                <div class="panel-header">
+                    <span class="panel-title">Informations utilisateur</span>
+                </div>
+
+                @if (IsProfileLoading)
+                {
+                    <div class="profile-state">Chargement des informations utilisateur...</div>
+                }
+                else if (!string.IsNullOrWhiteSpace(ProfileError))
+                {
+                    <div class="profile-state error">@ProfileError</div>
+                }
+                else if (ProfileForm is null)
+                {
+                    <div class="profile-state">Aucune information utilisateur trouvée.</div>
+                }
+                else
+                {
+                    @if (!string.IsNullOrWhiteSpace(ProfileSuccess))
+                    {
+                        <div class="profile-state success">@ProfileSuccess</div>
+                    }
+
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label>Nom d'utilisateur *</label>
+                            <FluentTextField @bind-Value="ProfileForm.UserName" Disabled="true" />
+                        </div>
+
+                        <div class="form-field">
+                            <label>Téléphone</label>
+                            <FluentTextField @bind-Value="ProfileForm.UserPhone" />
+                        </div>
+
+                        <div class="form-field">
+                            <label>Prénom</label>
+                            <FluentTextField @bind-Value="ProfileForm.FirstName" />
+                        </div>
+
+                        <div class="form-field">
+                            <label>Nom</label>
+                            <FluentTextField @bind-Value="ProfileForm.LastName" />
+                        </div>
+
+                        <div class="form-field full">
+                            <label>Email</label>
+                            <FluentTextField @bind-Value="ProfileForm.UserEmail" TextFieldType="TextFieldType.Email" />
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <FluentButton Appearance="Appearance.Accent"
+                                      Disabled="@IsProfileSaving"
+                                      OnClick="SaveProfileAsync">
+                            @(IsProfileSaving ? "Enregistrement..." : "Enregistrer les modifications")
+                        </FluentButton>
+                    </div>
+                }
+            </div>
+        }
+        else if (SelectedSection == DashboardSection.Auctions)
+        {
+            <div class="page-header fade-up">
+                <div>
+                    <h1 class="page-title">Tableau de bord</h1>
+                    <p class="page-subtitle">Gérez les enchères, les œuvres et les utilisateurs</p>
+                </div>
+            </div>
+
+            <div class="panel fade-up-3">
+                <div class="panel-header">
+                    <span class="panel-title">Enchères auxquelles vous avez participé</span>
+                    <div class="search-wrap">
+                        <FluentSearch Placeholder="Rechercher..." />
+                    </div>
+                </div>
+
+                @if (IsHistoryLoading)
+                {
+                    <div class="profile-state">Chargement de l'historique...</div>
+                }
+                else if (!string.IsNullOrWhiteSpace(HistoryError))
+                {
+                    <div class="profile-state error">@HistoryError</div>
+                }
+                else if (Rows.Count == 0)
+                {
+                    <div class="profile-state">Aucune enchère trouvée pour cet utilisateur.</div>
+                }
+                else
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Œuvre</th>
+                                <th>Artiste</th>
+                                <th>Statut</th>
+                                <th>Mise actuelle</th>
+                                <th>Vos mises</th>
+                                <th>Dernière mise</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Rows)
+                            {
+                                <tr>
+                                    <td><strong>@row.Artwork</strong></td>
+                                    <td class="muted">@row.Artist</td>
+                                    <td><span class="badge @row.BadgeClass">@row.Status</span></td>
+                                    <td class="price">@row.CurrentBid</td>
+                                    <td class="muted">@row.Bids</td>
+                                    <td class="muted small">@row.Ends</td>
+                                    <td>
+                                        <div class="action-btns">
+                                            <FluentButton Appearance="Appearance.Outline"
+                                                          Size="ButtonSize.Small"
+                                                          OnClick="() => OpenAuction(row.SaleId)">Voir</FluentButton>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+        else if (SelectedSection == DashboardSection.Users)
+        {
+            <div class="page-header fade-up">
+                <div>
+                    <h1 class="page-title">Utilisateurs</h1>
+                    <p class="page-subtitle">Liste de tous les utilisateurs</p>
+                </div>
+            </div>
+
+            <div class="panel fade-up-3">
+                <div class="panel-header">
+                    <span class="panel-title">Tous les utilisateurs</span>
+                </div>
+
+                @if (IsUsersLoading)
+                {
+                    <div class="profile-state">Chargement des utilisateurs...</div>
+                }
+                else if (!string.IsNullOrWhiteSpace(UsersError))
+                {
+                    <div class="profile-state error">@UsersError</div>
+                }
+                else if (Users.Count == 0)
+                {
+                    <div class="profile-state">Aucun utilisateur trouvé.</div>
+                }
+                else
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom d'utilisateur</th>
+                                <th>Prénom</th>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Téléphone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Users)
+                            {
+                                <tr>
+                                    <td class="muted">@user.Id</td>
+                                    <td><strong>@user.UserName</strong></td>
+                                    <td class="muted">@user.FirstName</td>
+                                    <td class="muted">@user.LastName</td>
+                                    <td class="muted">@user.UserEmail</td>
+                                    <td class="muted">@user.UserPhone</td>
+                                    <td>
+                                        <FluentButton Appearance="Appearance.Outline"
+                                                      Size="ButtonSize.Small"
+                                                      OnClick="() => StartEditUser(user)">Modifier</FluentButton>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+
+                    @if (EditingUserForm is not null)
+                    {
+                        <div class="panel" style="margin-top:1rem;">
+                            <div class="panel-header">
+                                <span class="panel-title">Modifier l'utilisateur #@EditingUserForm.Id</span>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(EditUserError))
+                            {
+                                <div class="profile-state error">@EditUserError</div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(EditUserSuccess))
+                            {
+                                <div class="profile-state success">@EditUserSuccess</div>
+                            }
+
+                            <div class="form-grid">
+                                <div class="form-field">
+                                    <label>Nom d'utilisateur</label>
+                                    <FluentTextField @bind-Value="EditingUserForm.UserName" />
+                                </div>
+
+                                <div class="form-field">
+                                    <label>Téléphone</label>
+                                    <FluentTextField @bind-Value="EditingUserForm.UserPhone" />
+                                </div>
+
+                                <div class="form-field">
+                                    <label>Prénom</label>
+                                    <FluentTextField @bind-Value="EditingUserForm.FirstName" />
+                                </div>
+
+                                <div class="form-field">
+                                    <label>Nom</label>
+                                    <FluentTextField @bind-Value="EditingUserForm.LastName" />
+                                </div>
+
+                                <div class="form-field full">
+                                    <label>Email</label>
+                                    <FluentTextField @bind-Value="EditingUserForm.UserEmail" TextFieldType="TextFieldType.Email" />
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <FluentButton Appearance="Appearance.Accent"
+                                              Disabled="@IsEditUserSaving"
+                                              OnClick="SaveEditedUserAsync">
+                                    @(IsEditUserSaving ? "Enregistrement..." : "Enregistrer")
+                                </FluentButton>
+                                <FluentButton Appearance="Appearance.Outline"
+                                              Disabled="@IsEditUserSaving"
+                                              OnClick="CancelEditUser">Annuler</FluentButton>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+        else if (SelectedSection == DashboardSection.Bids)
+        {
+            <div class="page-header fade-up">
+                <div>
+                    <h1 class="page-title">Mises</h1>
+                    <p class="page-subtitle">Toutes les mises de toutes les enchères</p>
+                </div>
+            </div>
+
+            <div class="panel fade-up-3">
+                <div class="panel-header">
+                    <span class="panel-title">Toutes les mises</span>
+                </div>
+
+                @if (IsAllBidsLoading)
+                {
+                    <div class="profile-state">Chargement des mises...</div>
+                }
+                else if (!string.IsNullOrWhiteSpace(AllBidsError))
+                {
+                    <div class="profile-state error">@AllBidsError</div>
+                }
+                else if (AllBidsRows.Count == 0)
+                {
+                    <div class="profile-state">Aucune mise trouvée.</div>
+                }
+                else
+                {
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Enchère</th>
+                                <th>Utilisateur</th>
+                                <th>Montant</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var bid in AllBidsRows)
+                            {
+                                <tr>
+                                    <td><strong>@bid.AuctionName</strong></td>
+                                    <td class="muted">@bid.Bidder</td>
+                                    <td class="price">@bid.Amount</td>
+                                    <td class="muted small">@bid.PlacedAtUtc.ToLocalTime().ToString("dd MMM, HH:mm")</td>
+                                    <td>
+                                        <FluentButton Appearance="Appearance.Outline"
+                                                      Size="ButtonSize.Small"
+                                                      OnClick="() => OpenAuction(bid.SaleId)">Voir</FluentButton>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </main>
+</div>
+
+@code {
+    private DashboardSection SelectedSection = DashboardSection.Profile;
+
+    private bool IsProfileLoading;
+    private bool IsProfileSaving;
+    private string? ProfileError;
+    private string? ProfileSuccess;
+    private UpdateUserDTO? ProfileForm;
+    private bool IsHistoryLoading;
+    private string? HistoryError;
+    private readonly List<AuctionRow> Rows = [];
+    private bool IsUsersLoading;
+    private string? UsersError;
+    private readonly List<UserDTO> Users = [];
+    private UpdateUserDTO? EditingUserForm;
+    private bool IsEditUserSaving;
+    private string? EditUserError;
+    private string? EditUserSuccess;
+    private bool IsAllBidsLoading;
+    private string? AllBidsError;
+    private readonly List<AllBidRow> AllBidsRows = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileAsync();
+    }
+
+    private string SidebarClass(DashboardSection section)
+        => SelectedSection == section ? "sidebar-link active" : "sidebar-link";
+
+    private void SelectSection(DashboardSection section)
+    {
+        SelectedSection = section;
+    }
+
+    private async Task SelectSectionAsync(DashboardSection section)
+    {
+        SelectedSection = section;
+
+        if (section == DashboardSection.Profile)
+        {
+            await LoadProfileAsync();
+            return;
+        }
+
+        if (section == DashboardSection.Auctions)
+        {
+            await LoadAuctionHistoryAsync();
+            return;
+        }
+
+        if (section == DashboardSection.Users)
+        {
+            await LoadUsersAsync();
+            return;
+        }
+
+        if (section == DashboardSection.Bids)
+        {
+            await LoadAllBidsAsync();
+        }
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        IsProfileLoading = true;
+        ProfileError = null;
+        ProfileSuccess = null;
+
+        try
+        {
+            var userId = await GetCurrentUserIdAsync();
+            if (userId is null)
+            {
+                ProfileError = "Impossible d'identifier l'utilisateur connecté.";
+                return;
+            }
+
+            var user = await UserService.GetByIdAsync(userId.Value);
+            if (user is null)
+            {
+                ProfileError = "Impossible de charger le profil utilisateur.";
+                return;
+            }
+
+            ProfileForm = new UpdateUserDTO
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                UserEmail = user.UserEmail,
+                UserPhone = user.UserPhone
+            };
+        }
+        catch
+        {
+            ProfileError = "Une erreur est survenue lors du chargement du profil.";
+        }
+        finally
+        {
+            IsProfileLoading = false;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (ProfileForm is null)
+            return;
+
+        IsProfileSaving = true;
+        ProfileError = null;
+        ProfileSuccess = null;
+
+        try
+        {
+            await UserService.UpdateAsync(ProfileForm);
+            ProfileSuccess = "Profil mis à jour avec succès.";
+        }
+        catch
+        {
+            ProfileError = "Impossible d'enregistrer les modifications du profil.";
+        }
+        finally
+        {
+            IsProfileSaving = false;
+        }
+    }
+
+    private async Task LoadAuctionHistoryAsync()
+    {
+        IsHistoryLoading = true;
+        HistoryError = null;
+        Rows.Clear();
+
+        try
+        {
+            var userId = await GetCurrentUserIdAsync();
+            if (userId is null)
+            {
+                HistoryError = "Impossible d'identifier l'utilisateur connecté.";
+                return;
+            }
+
+            var sales = (await SaleService.GetAllAsync()).ToList();
+            var historyRows = new List<(AuctionRow Row, DateTime LastBidUtc)>();
+
+            foreach (var sale in sales)
+            {
+                var bids = (await BidService.GetBySaleIdAsync(sale.Id)).ToList();
+                var userBids = bids
+                    .Where(b => b.BuyerId == userId.Value)
+                    .OrderByDescending(b => b.PlacedAtUtc)
+                    .ToList();
+
+                if (userBids.Count == 0)
+                    continue;
+
+                var status = NormalizeSaleStatus(sale.Status);
+                var maxBidAmount = bids.Count > 0
+                    ? Convert.ToDecimal(bids.Max(b => b.Amount))
+                    : Convert.ToDecimal(sale.FinalPrice > 0 ? sale.FinalPrice : sale.StartingPrice);
+
+                historyRows.Add((
+                    new AuctionRow(
+                        sale.Id,
+                        sale.ItemName,
+                        sale.SellerUserName,
+                        GetStatusLabel(status),
+                        GetBadgeClass(status),
+                        $"€{maxBidAmount:N0}",
+                        userBids.Count.ToString(),
+                        userBids[0].PlacedAtUtc.ToLocalTime().ToString("dd MMM, HH:mm"),
+                        status == "Completed"),
+                    userBids[0].PlacedAtUtc));
+            }
+
+            foreach (var row in historyRows.OrderByDescending(x => x.LastBidUtc).Select(x => x.Row))
+            {
+                Rows.Add(row);
+            }
+        }
+        catch
+        {
+            HistoryError = "Une erreur est survenue lors du chargement de l'historique.";
+        }
+        finally
+        {
+            IsHistoryLoading = false;
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        IsUsersLoading = true;
+        UsersError = null;
+        Users.Clear();
+        EditingUserForm = null;
+        EditUserError = null;
+        EditUserSuccess = null;
+
+        try
+        {
+            var allUsers = await UserService.GetAllAsync();
+            foreach (var user in allUsers)
+            {
+                Users.Add(user);
+            }
+        }
+        catch
+        {
+            UsersError = "Une erreur est survenue lors du chargement des utilisateurs.";
+        }
+        finally
+        {
+            IsUsersLoading = false;
+        }
+    }
+
+    private void StartEditUser(UserDTO user)
+    {
+        EditUserError = null;
+        EditUserSuccess = null;
+
+        EditingUserForm = new UpdateUserDTO
+        {
+            Id = user.Id,
+            UserName = user.UserName,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            UserEmail = user.UserEmail,
+            UserPhone = user.UserPhone
+        };
+    }
+
+    private void CancelEditUser()
+    {
+        EditingUserForm = null;
+        EditUserError = null;
+        EditUserSuccess = null;
+    }
+
+    private async Task SaveEditedUserAsync()
+    {
+        if (EditingUserForm is null)
+            return;
+
+        IsEditUserSaving = true;
+        EditUserError = null;
+        EditUserSuccess = null;
+
+        try
+        {
+            await UserService.UpdateAsync(EditingUserForm);
+
+            var existing = Users.FirstOrDefault(u => u.Id == EditingUserForm.Id);
+            if (existing is not null)
+            {
+                existing.UserName = EditingUserForm.UserName;
+                existing.FirstName = EditingUserForm.FirstName;
+                existing.LastName = EditingUserForm.LastName;
+                existing.UserEmail = EditingUserForm.UserEmail;
+                existing.UserPhone = EditingUserForm.UserPhone;
+            }
+
+            EditUserSuccess = "Utilisateur mis à jour avec succès.";
+        }
+        catch
+        {
+            EditUserError = "Impossible d'enregistrer les modifications de l'utilisateur.";
+        }
+        finally
+        {
+            IsEditUserSaving = false;
+        }
+    }
+
+    private async Task LoadAllBidsAsync()
+    {
+        IsAllBidsLoading = true;
+        AllBidsError = null;
+        AllBidsRows.Clear();
+
+        try
+        {
+            var sales = (await SaleService.GetAllAsync()).ToList();
+
+            foreach (var sale in sales)
+            {
+                var bids = await BidService.GetBySaleIdAsync(sale.Id);
+                foreach (var bid in bids)
+                {
+                    AllBidsRows.Add(new AllBidRow(
+                        sale.Id,
+                        sale.ItemName,
+                        string.IsNullOrWhiteSpace(bid.BuyerUserName) ? $"Utilisateur #{bid.BuyerId}" : bid.BuyerUserName,
+                        $"€{Convert.ToDecimal(bid.Amount):N0}",
+                        bid.PlacedAtUtc));
+                }
+            }
+
+            AllBidsRows.Sort((x, y) => DateTime.Compare(y.PlacedAtUtc, x.PlacedAtUtc));
+        }
+        catch
+        {
+            AllBidsError = "Une erreur est survenue lors du chargement des mises.";
+        }
+        finally
+        {
+            IsAllBidsLoading = false;
+        }
+    }
+
+    private static string NormalizeSaleStatus(string? status)
+    {
+        if (string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase)) return "Active";
+        if (string.Equals(status, "Pending", StringComparison.OrdinalIgnoreCase)) return "Pending";
+        if (string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase)) return "Completed";
+        return "Unknown";
+    }
+
+    private static string GetStatusLabel(string status) => status switch
+    {
+        "Active" => "En cours",
+        "Pending" => "À venir",
+        "Completed" => "Terminée",
+        _ => "Inconnu"
+    };
+
+    private static string GetBadgeClass(string status) => status switch
+    {
+        "Active" => "badge-live",
+        "Pending" => "badge-soon",
+        "Completed" => "badge-ended",
+        _ => "badge-ended"
+    };
+
+    private async Task<int?> GetCurrentUserIdAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+            return null;
+
+        var userIdValue =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("nameid")?.Value
+            ?? user.FindFirst("sub")?.Value
+            ?? user.FindFirst("userid")?.Value
+            ?? user.FindFirst("userId")?.Value
+            ?? user.FindFirst("id")?.Value;
+
+        return int.TryParse(userIdValue, out var userId) ? userId : null;
+    }
+
+    private void OpenAuction(int saleId)
+        => Navigation.NavigateTo($"/auction-detail/{saleId}");
+
+    private enum DashboardSection
+    {
+        Profile,
+        Auctions,
+        Users,
+        Bids
+    }
+
+    private sealed record AuctionRow(
+        int SaleId,
+        string Artwork,
+        string Artist,
+        string Status,
+        string BadgeClass,
+        string CurrentBid,
+        string Bids,
+        string Ends,
+        bool IsEnded
+    );
+
+    private sealed record AllBidRow(
+        int SaleId,
+        string AuctionName,
+        string Bidder,
+        string Amount,
+        DateTime PlacedAtUtc
+    );
+}
