@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using Art.Exhibit.FrontEnd.Application.DTOs;
 using Art.Exhibit.FrontEnd.Application.Interfaces.Auth;
 using Art.Exhibit.FrontEnd.Application.Interfaces.HttpClients;
@@ -75,5 +76,17 @@ public class AuthService : IAuthService
         return !string.IsNullOrWhiteSpace(token)
                && expiresAtUtc is not null
                && expiresAtUtc > DateTime.UtcNow;
+    }
+
+    public async Task<int?> GetCurrentUserIdAsync()
+    {
+        var authState = await _authStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+            return null;
+
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return int.TryParse(userIdValue, out var userId) ? userId : null;
     }
 }

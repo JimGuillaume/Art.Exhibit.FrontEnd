@@ -8,4 +8,5 @@ public interface IAuthService
     Task<AuthResponseDTO?> RegisterAsync(RegisterDTO dto);
     Task LogoutAsync();
     Task<bool> IsAuthenticatedAsync();
+    Task<int?> GetCurrentUserIdAsync();
 }

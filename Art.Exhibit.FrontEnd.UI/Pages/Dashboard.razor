@@ -1,13 +1,11 @@
 @page "/dashboard"
-@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Art.Exhibit.FrontEnd.Application.DTOs
 @using Art.Exhibit.FrontEnd.Application.Interfaces.Services
 @attribute [Authorize]
 @inject IUserService UserService
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAuthService AuthService
 @inject ISaleService SaleService
 @inject IBidService BidService
 @inject NavigationManager Navigation
@@ -120,9 +118,6 @@
             <div class="panel fade-up-3">
                 <div class="panel-header">
                     <span class="panel-title">Enchères auxquelles vous avez participé</span>
-                    <div class="search-wrap">
-                        <FluentSearch Placeholder="Rechercher..." />
-                    </div>
                 </div>
 
                 @if (IsHistoryLoading)
@@ -425,7 +420,7 @@
 
         try
         {
-            var userId = await GetCurrentUserIdAsync();
+            var userId = await AuthService.GetCurrentUserIdAsync();
             if (userId is null)
             {
                 ProfileError = "Impossible d'identifier l'utilisateur connecté.";
@@ -491,7 +486,7 @@
 
         try
         {
-            var userId = await GetCurrentUserIdAsync();
+            var userId = await AuthService.GetCurrentUserIdAsync();
             if (userId is null)
             {
                 HistoryError = "Impossible d'identifier l'utilisateur connecté.";
@@ -690,25 +685,6 @@
         "Completed" => "badge-ended",
         _ => "badge-ended"
     };
-
-    private async Task<int?> GetCurrentUserIdAsync()
-    {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated != true)
-            return null;
-
-        var userIdValue =
-            user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("nameid")?.Value
-            ?? user.FindFirst("sub")?.Value
-            ?? user.FindFirst("userid")?.Value
-            ?? user.FindFirst("userId")?.Value
-            ?? user.FindFirst("id")?.Value;
-
-        return int.TryParse(userIdValue, out var userId) ? userId : null;
-    }
 
     private void OpenAuction(int saleId)
         => Navigation.NavigateTo($"/auction-detail/{saleId}");

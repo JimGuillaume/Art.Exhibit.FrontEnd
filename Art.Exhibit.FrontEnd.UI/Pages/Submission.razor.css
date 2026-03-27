@@ -1,0 +1,107 @@
+.submission-panel {
+    max-width: 900px;
+    width: 100%;
+}
+
+.auth-card {
+    padding: 2rem;
+    border-radius: 14px;
+    border: 1px solid var(--art-border, #e6ded1);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.06);
+    background: #fff;
+}
+
+.submission-form {
+    margin-top: 1.25rem;
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+}
+
+.field-group {
+    margin-bottom: 1rem;
+}
+
+.field-label {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--art-muted, #6f6f6f);
+    margin-bottom: 0.45rem;
+}
+
+.field-col {
+    min-width: 0;
+}
+
+.submission-textarea,
+.submission-select,
+.submission-datetime {
+    width: 100%;
+    padding: 0.68rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid #d2d2d2;
+    background: #fff;
+    font: inherit;
+    box-sizing: border-box;
+}
+
+.submission-textarea {
+    min-height: 7.5rem;
+    resize: vertical;
+}
+
+.submission-textarea:focus,
+.submission-select:focus,
+.submission-datetime:focus {
+    outline: none;
+    border-color: var(--accent-fill-rest, #1f6feb);
+    box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.18);
+}
+
+.submission-form ::deep .field-control,
+.submission-form ::deep fluent-text-field.field-control,
+.submission-form ::deep fluent-number-field.field-control {
+    width: 100%;
+}
+
+.submission-form ::deep fluent-text-field.field-control::part(control),
+.submission-form ::deep fluent-number-field.field-control::part(control) {
+    min-height: 40px;
+    border-radius: 10px;
+}
+
+.submission-actions {
+    margin-top: 0.4rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.submission-actions ::deep button,
+.submission-actions ::deep .fluent-button {
+    min-width: 10.5rem;
+}
+
+@media (max-width: 860px) {
+    .auth-card {
+        padding: 1.25rem;
+    }
+
+    .field-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+
+    .submission-actions {
+        justify-content: stretch;
+    }
+
+    .submission-actions ::deep button,
+    .submission-actions ::deep .fluent-button {
+        width: 100%;
+    }
+}

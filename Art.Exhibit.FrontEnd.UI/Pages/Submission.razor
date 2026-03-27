@@ -1,0 +1,245 @@
+﻿@page "/submit"
+@using System.Globalization
+@using Art.Exhibit.FrontEnd.Application.DTOs
+@using Art.Exhibit.FrontEnd.Application.Interfaces.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.FluentUI.AspNetCore.Components
+@attribute [Authorize]
+@inject IItemService ItemService
+@inject ISaleService SaleService
+@inject ICategoryService CategoryService
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Soumettre une enchère — Art Exhibit</PageTitle>
+
+<div class="auth-shell">
+    <div class="auth-panel submission-panel">
+        <a class="auth-logo" href="/">Art Exhibit</a>
+
+        <div class="auth-card">
+            <h1 class="auth-title">Soumettre une nouvelle enchère</h1>
+            <p class="auth-sub">Créez une œuvre puis programmez son ouverture à la vente.</p>
+
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Error">@ErrorMessage</FluentMessageBar>
+            }
+            else if (!string.IsNullOrWhiteSpace(SuccessMessage))
+            {
+                <FluentMessageBar Intent="@MessageIntent.Success">@SuccessMessage</FluentMessageBar>
+            }
+
+            @if (IsLoadingCategories)
+            {
+                <p>Chargement des catégories...</p>
+            }
+            else
+            {
+                <div class="submission-form">
+                    <div class="field-group">
+                        <label class="field-label">Titre de l'œuvre *</label>
+                        <FluentTextField @bind-Value="ItemName" Placeholder="Ex: Coucher de soleil sur Montréal" Disabled="@IsSubmitting" class="field-control" />
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label">Description *</label>
+                        <textarea class="submission-textarea" @bind="Description" rows="4" disabled="@IsSubmitting"></textarea>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-group field-col">
+                            <label class="field-label">Catégorie *</label>
+                            <select @bind="SelectedCategoryId" disabled="@IsSubmitting" class="submission-select">
+                                <option value="0">-- Choisir une catégorie --</option>
+                                @foreach (var category in Categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="field-group field-col">
+                            <label class="field-label">Prix de départ (€) *</label>
+                            <FluentNumberField @bind-Value="StartingPrice"
+                                               Step="10"
+                                               Min="1"
+                                               Disabled="@IsSubmitting"
+                                               class="field-control" />
+                        </div>
+                    </div>
+
+                    <div class="field-row">
+                        <div class="field-group field-col">
+                            <label class="field-label">Date de démarrage *</label>
+                            <input type="datetime-local"
+                                   @bind-value="StartDateLocal"
+                                   @bind-value:format="yyyy-MM-ddTHH:mm"
+                                   disabled="@IsSubmitting"
+                                   class="submission-datetime" />
+                        </div>
+
+                        <div class="field-group field-col">
+                            <label class="field-label">Tags (séparés par des virgules)</label>
+                            <FluentTextField @bind-Value="TagsCsv" Placeholder="moderne, abstrait, huile" Disabled="@IsSubmitting" class="field-control" />
+                        </div>
+                    </div>
+
+                    <div class="form-actions submission-actions">
+                        <FluentButton Appearance="Appearance.Accent" OnClick="HandleSubmitAsync" Disabled="@IsSubmitting">
+                            @(IsSubmitting ? "Soumission..." : "Créer l'enchère")
+                        </FluentButton>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly List<CategoryDTO> Categories = [];
+
+    private string ItemName = string.Empty;
+    private string Description = string.Empty;
+    private int SelectedCategoryId;
+    private float StartingPrice = 100;
+    private DateTime StartDateLocal = DateTime.Now.AddHours(1);
+    private string TagsCsv = string.Empty;
+
+    private bool IsLoadingCategories;
+    private bool IsSubmitting;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoadingCategories = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var categories = await CategoryService.GetAllAsync();
+            Categories.Clear();
+            Categories.AddRange(categories);
+
+            if (Categories.Count > 0)
+            {
+                SelectedCategoryId = Categories[0].Id;
+            }
+        }
+        catch
+        {
+            ErrorMessage = "Impossible de charger les catégories.";
+        }
+        finally
+        {
+            IsLoadingCategories = false;
+        }
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        if (IsSubmitting)
+            return;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        if (string.IsNullOrWhiteSpace(ItemName)
+            || string.IsNullOrWhiteSpace(Description)
+            || SelectedCategoryId <= 0
+            || StartingPrice <= 0)
+        {
+            ErrorMessage = "Veuillez compléter tous les champs obligatoires.";
+            return;
+        }
+
+        var localStartDate = StartDateLocal;
+
+        var userId = await AuthService.GetCurrentUserIdAsync();
+        if (userId is null)
+        {
+            ErrorMessage = "Vous devez être connecté pour soumettre une enchère.";
+            return;
+        }
+
+        IsSubmitting = true;
+
+        try
+        {
+            var existingUserItemIds = (await ItemService.GetAllAsync())
+                .Where(i => i.UserId == userId.Value)
+                .Select(i => i.Id)
+                .ToHashSet();
+
+            var tags = TagsCsv
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            await ItemService.CreateAsync(new CreateItemDTO
+            {
+                Name = ItemName.Trim(),
+                Description = Description.Trim(),
+                Price = StartingPrice,
+                Tags = tags,
+                CategoryId = SelectedCategoryId,
+                UserId = userId.Value
+            });
+
+            var userItemsAfterCreate = (await ItemService.GetAllAsync())
+                .Where(i => i.UserId == userId.Value)
+                .ToList();
+
+            var createdItem = userItemsAfterCreate
+                .Where(i => !existingUserItemIds.Contains(i.Id))
+                .OrderByDescending(i => i.Id)
+                .FirstOrDefault()
+                ?? userItemsAfterCreate
+                    .Where(i => string.Equals(i.Name, ItemName.Trim(), StringComparison.OrdinalIgnoreCase)
+                             && string.Equals(i.Description, Description.Trim(), StringComparison.OrdinalIgnoreCase)
+                             && i.CategoryId == SelectedCategoryId)
+                    .OrderByDescending(i => i.Id)
+                    .FirstOrDefault();
+
+            if (createdItem is null)
+            {
+                ErrorMessage = "L'œuvre a été créée, mais l'identifiant n'a pas pu être retrouvé pour créer la vente.";
+                return;
+            }
+
+            var startDateUtc = DateTime.SpecifyKind(localStartDate, DateTimeKind.Local).ToUniversalTime();
+            var saleStatus = startDateUtc > DateTime.UtcNow ? "Pending" : "Active";
+
+            await SaleService.CreateAsync(new CreateSaleDTO
+            {
+                ItemId = createdItem.Id,
+                SellerId = userId.Value,
+                StartingPrice = StartingPrice,
+                StartDate = startDateUtc,
+                Status = saleStatus
+            });
+
+            SuccessMessage = "Votre enchère a été créée avec succès.";
+
+            var createdSale = (await SaleService.GetAllAsync())
+                .Where(s => s.ItemId == createdItem.Id && s.SellerId == userId.Value)
+                .OrderByDescending(s => s.Id)
+                .FirstOrDefault();
+
+            if (createdSale is not null)
+            {
+                Navigation.NavigateTo($"/auction-detail/{createdSale.Id}");
+            }
+        }
+        catch
+        {
+            ErrorMessage = "Une erreur est survenue pendant la création de l'enchère.";
+        }
+        finally
+        {
+            IsSubmitting = false;
+        }
+    }
+}
+
